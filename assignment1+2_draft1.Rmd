@@ -1,12 +1,12 @@
 ---
 title: "Quant: Assignment 1 + 2"
 author: "Samantha Page + Lamei Zhang"
-date: "10/28/2021"
+date: "11/2/2021"
 output: 
   html_document:
     theme: cerulean
     toc: true
-    toc_depth: 5
+    toc_depth: 6
     toc_float: true
 ---
 ```{r setup, include=FALSE, echo = FALSE, message=FALSE}
@@ -26,7 +26,7 @@ library(gridExtra)
 
 How does affordable housing impact property value? Specifically for the purposes of this assignment, how does affordable housing (defined a variety of ways) affect property values in San Francisco, California, between 2013-14 and 2018-19?
 
-# Prior Research 
+## Prior Research 
 
 In a policy brief written by the Center for Housing Policy (n.d.), findings suggest that affordable housing generally does not have significant impacts on surrounding property values, though the effects vary based on specific context. For example, clustered developments showed some negative impact on housing developments, while more diffuse development of physical affordable housing structures had little to no impact. Nguyen (2005) confirms these findings in her literature review "Does Affordable Housing Detrimentally Affect Property Values?" Nguyen generally concludes that when affordable housing is developed in depressed neighborhoods and when the quality of the housing is poor, the values of proximate property are shown to decline. Conversely, the review found no effect of affordable housing on property values when developed to good quality standards and in healthy neighborhoods. Nguyen advocates for more studies to reach more conclusive understandings.
 
@@ -99,6 +99,7 @@ data_clean <- data %>%
   filter(pct_change != "NA") %>%
   filter(pct_change != "NaN") %>%
   filter(pct_change != "Inf") %>%
+  filter(ZIPCode != "NA") %>%
   arrange(desc(ZIPCode))
 ```
 
@@ -108,14 +109,13 @@ data_clean <- data %>%
 kable(head(data_clean))
 ```
 
-This dataset includes 194,924 observations. 
+This dataset includes 61 observations. 
 
 # Descriptive Statistics
 
 ## Continuous Variables
 
 The continuous variables we want to use are income, income percent of AMI, and percent change of property value.
-
 
 ### Sample Mean and 95-percent Confidence Interval
 ```{r}
@@ -193,13 +193,13 @@ kable(cont_summary, digits = 0)
 pretty_income_hist <- income_hist +
   theme_bw() +
   scale_x_continuous(name = "Median income") +
-  scale_y_continuous(name = "Y VARIABLE") +
+  scale_y_continuous(name = "Number of households living in affordable housing") +
   theme(axis.text.x = element_text(angle = 90))
 
 pretty_incAMI_hist <- incAMI_hist +
   theme_bw() + 
   scale_x_continuous(name = "Income as percent of AMI",) +
-  scale_y_continuous(name = "Y VARIABLE") +
+  scale_y_continuous(name = "Number of households living in affordable housing") +
   theme(axis.text.x = element_text(angle = 90))
 
 pretty_prop_hist = prop_hist +
@@ -208,19 +208,19 @@ pretty_prop_hist = prop_hist +
                      trans = "log",
                      breaks = c(0.1, 1, 10, 100, 1000, 10000),
                      labels = c("0.1", "1", "10", "100", "1000", "10,000")) +
-  scale_y_continuous(name = "Y VARIABLE") +
+  scale_y_continuous(name = "Number of households living in affordable housing") +
   theme(axis.text.x = element_text(angle = 90)) 
 
 grid.arrange(pretty_income_hist, pretty_incAMI_hist, pretty_prop_hist,
              ncol = 3)
 ```
+
 ## Categorical Variables
 
 We have two categorical variables:
 
 * Whether the property value increased or decreased over the five-year period
 * ZIP Code
-
 
 ```{r}
 pct_inc <- t.test(data_clean$newpropval == "Increase")
@@ -261,6 +261,7 @@ cat_summary_propval <- tibble(`Property value change` =
 
 kable(cat_summary_propval, digits = 0)
 ```
+### Displaying Results
 ```{r}
 ggplot(cat_summary_propval) +
   geom_bar(aes(x = `Property value change`, 
@@ -271,12 +272,11 @@ ggplot(cat_summary_propval) +
                ymin = `95-percent confidence - low`,
                ymax = `95-percent confidence - high`),
            stat = "identity") +
-  scale_y_continuous(name = "XXXXXX",
+  scale_y_continuous(name = "% of households living in affordable housing",
                      breaks = c(0, 20, 40, 60, 80),
                      labels = c("0", "20%", "40%", "60%", "80%")) +
   theme_bw()
 ```
-
 
 ```{r}
 cat_summary_ZIP <- tibble(`ZIP Codes` = 
@@ -364,7 +364,7 @@ ggplot(cat_summary_ZIP) +
                ymin = `95-percent confidence - low`,
                ymax = `95-percent confidence - high`),
            stat = "identity") +
-  scale_y_continuous(name = "XXXXXX",
+  scale_y_continuous(name = "% of households living in affordable housing",
                      breaks = c(0, 20, 40, 60, 80),
                      labels = c("0", "20%", "40%", "60%", "80%")) +
   theme_bw()
