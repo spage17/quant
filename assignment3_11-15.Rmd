@@ -1,0 +1,426 @@
+---
+title: "Quant: Assignment 4"
+author: "Samantha Page + Lamei Zhang"
+date: "11/16/2021"
+output: 
+  html_document:
+    theme: cerulean
+    toc: true
+    toc_depth: 6
+    toc_float: true
+---
+```{r setup, include=FALSE, echo = FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo = FALSE, message=FALSE}
+library(tidyverse)
+library(tidycensus)
+library(readxl)
+library(knitr)
+library(sf)
+library(gridExtra)
+```
+
+# Research Question
+
+How does affordable housing impact property value? Specifically for the purposes of this assignment, what is the relationship between affordable housing (defined as the use of a Low-income Housing Tax Credit, or LIHTC) and property values in San Francisco, California, between 2013-14 and 2018-19? 
+
+## Prior Research 
+
+In a policy brief written by the Center for Housing Policy (n.d.), findings suggest that affordable housing generally does not have significant impacts on surrounding property values, though the effects vary based on specific context. For example, clustered developments showed some negative impact on housing developments, while more diffuse development of physical affordable housing structures had little to no impact. Nguyen (2005) confirms these findings in her literature review "Does Affordable Housing Detrimentally Affect Property Values?" Nguyen generally concludes that when affordable housing is developed in depressed neighborhoods and when the quality of the housing is poor, the values of proximate property are shown to decline. Conversely, the review found no effect of affordable housing on property values when developed to good quality standards and in healthy neighborhoods. Nguyen advocates for more studies to reach more conclusive understandings.
+
+# Data
+
+The sample population for this study is census tracts in San Francisco, California. The analysis will include the following variables: 
+
+* San Francisco property values (2013-2014, 2018-2019) (San Francisco Recorder-Assessor)
+* Affordable housing subsidized through the Low-Income Housing Tax Credit, defined by census tract (HUD)
+* Median income per census tract, and median income as percent of AMI (US Census Bureau 2019)
+
+## Load Data 
+
+``` {r message=FALSE}
+sf_1314 <- read_csv("sf_tax_1314.csv") 
+
+names(sf_1314)[1] <- 'Site'
+
+names(sf_1314)[32] <- 'LandValue_1314'
+
+names(sf_1314)[33] <- 'PropValue_1314'
+
+sf_1314 <- sf_1314 %>%
+  select(Site, block_num, lot_num, LandValue_1314, PropValue_1314) %>%
+  mutate(TotValue_1314 = PropValue_1314 + LandValue_1314)
+```
+
+``` {r message=FALSE}
+sf_1819 <- read_csv("sf_tax_1819.csv") 
+
+names(sf_1819)[1] <- 'Site'
+
+names(sf_1819)[32] <- 'LandValue_1819'
+
+names(sf_1819)[33] <- 'PropValue_1819'
+
+sf_1819 <- sf_1819 %>%
+  select(Site, block_num, lot_num, LandValue_1819, PropValue_1819) %>%
+    mutate(TotValue_1819 = PropValue_1819 + LandValue_1819)
+```
+
+``` {r message=FALSE}
+parcels_census <- read_csv("table_parcels_census.csv")
+
+names(parcels_census)[5] <- 'block_lot'
+
+names(parcels_census)[10] <- 'street_name'
+
+parcels_census <- parcels_census %>%
+  select(block_lot, block_num, lot_num, street_name, geoid10)
+```
+
+``` {r message=FALSE}
+lihtc <- read_csv("LIHTCPUB.CSV")
+
+lihtc <- lihtc %>%
+  filter(proj_cty == "SAN FRANCISCO")
+
+names(lihtc)[15] <- 'geoid10'
+
+lihtc <- lihtc %>%
+  mutate(aff_housing = ifelse(!is.na(project), "Yes", "No")) %>%
+  select(geoid10, aff_housing)
+```
+
+``` {r message=FALSE}
+acs_income <- get_acs(geography = "tract", 
+                  variables = c(med_income_ = "B06011_001"), state = "CA", county = "San Francisco", output = "wide")
+
+table_acs_income <- read.csv("acs_income.csv")
+
+names(table_acs_income)[1] <- 'geoid10'
+
+table_acs_income <- table_acs_income %>%
+  select(geoid10, med_income_E, med_income_M)
+
+acs_tenure <- get_acs(geography = "tract", 
+                   variables = c(owner_occ = "B25003_002", total_occ ="B25003_001"), state = "CA",
+                   county = "San Francisco",
+                   output = "wide")
+
+owner_total <- acs_tenure %>%
+  select(GEOID, owner_occE, total_occE) %>%
+  mutate(pct_owner = (owner_occE/total_occE)*100) %>%
+  mutate(geoid10 = substr(GEOID,2,11))
+```
+
+## Joining Data
+
+```{r, message=FALSE}
+table_prop_value <- left_join(sf_1314, sf_1819) %>%
+  mutate(pct_change = ((TotValue_1314 - TotValue_1819)/TotValue_1314)*-100) %>%
+  mutate(newpropval = ifelse(pct_change > 0.0, "Increase", "Decrease")) %>%
+  select(Site, block_num, lot_num, TotValue_1314, TotValue_1819, pct_change, newpropval)
+```
+
+```{r, message=FALSE}
+table_prop_value$block_num<-as.character(table_prop_value$block_num)
+
+table_prop_parcels_census <- left_join(table_prop_value, parcels_census)
+
+table_prop_parcels_census <- table_prop_parcels_census %>%
+  select(geoid10, TotValue_1314, TotValue_1819, pct_change, newpropval) %>%
+  filter(pct_change != "NA") %>%
+  filter(pct_change != "NaN") %>%
+  filter(pct_change != "Inf") 
+
+names(table_prop_parcels_census)[1] <- 'geoid10'
+
+write.csv(table_prop_parcels_census,"C:\\Users\\Samantha\\Desktop\\quant\\prop_parcels_census.csv", row.names = FALSE)
+```
+
+```{r}
+avg_prop_tract <- read.csv("prop_parcels_census_lz.csv")
+
+avg_prop_tract$geoid10<-as.character(avg_prop_tract$geoid10)
+
+table_prop_lihtc <- left_join(avg_prop_tract, lihtc) %>%
+   mutate(AH = ifelse(!is.na(aff_housing), "Yes", "No")) %>%
+  select(geoid10, avg_1314, avg_1819, AH)
+
+table_prop_lihtc$geoid10<-as.character(table_prop_lihtc$geoid10)
+
+table_everything <- left_join(table_prop_lihtc, owner_total) %>%
+  select(geoid10, avg_1314, avg_1819, AH, pct_owner)
+```
+```{r}
+# remove duplicate rows with dplyr
+table_prop_everything_clean <- table_everything %>% 
+  distinct(geoid10, .keep_all = TRUE)
+```
+
+```{r}
+data1 <- table_prop_everything_clean %>%
+  mutate(pct_change = ((avg_1314 - avg_1819)/avg_1314)*-100) %>%
+  mutate(newpropval = ifelse(pct_change > 0.0, "Increase", "Decrease"))
+```
+
+```{r}
+table_acs_income$geoid10<-as.character(table_acs_income$geoid10)
+
+data2 <- left_join(data1, table_acs_income)
+
+data2 <- data2 %>%
+  mutate(pct_AMI = (med_income_E / 143100)*100) 
+
+data_clean <- data2 %>%
+  filter(geoid10 != "NA")
+```
+
+## Produce Table
+
+```{r}
+kable(head(data_clean))
+```
+
+This dataset includes 194 observations. 
+
+# Descriptive Statistics
+
+## Continuous Variables
+
+The continuous variables we want to use are percent change of property value per census tract between 2013-14 and 2018-19, average property value per census tract in 2018-19, and median income per tract as a percentage of 100% AMI ($143,100).
+
+### Sample Mean and 95-percent Confidence Interval
+```{r}
+prop_t_test <- t.test(data_clean$pct_change)
+avg_1819_t_test <- t.test(data_clean$avg_1819)
+AMI_t_test <- t.test(data_clean$pct_AMI)
+```
+
+### Median and Interquartile Range
+```{r}
+prop_quartiles <- quantile(data_clean$pct_change, na.rm = TRUE)
+avg_1819_quartiles <- quantile(data_clean$avg_1819, na.rm = TRUE)
+AMI_quartiles <- quantile(data_clean$pct_AMI, na.rm = TRUE)
+```
+
+### Standard Deviation
+```{r}
+prop_st_dev <- sd(data_clean$pct_change, na.rm = TRUE)
+avg_1819_st_dev <- sd(data_clean$avg_1819, na.rm = TRUE)
+AMI_st_dev <- sd(data_clean$pct_AMI, na.rm = TRUE)
+```
+
+### Histograms
+```{r}
+prop_hist <- ggplot(data_clean) +
+  geom_histogram(aes(x = pct_change),
+                 bins = 100) +
+  scale_x_continuous(trans = "log")
+
+avg_1819_hist <- ggplot(data_clean) +
+  geom_histogram(aes(x = avg_1819),
+                 bins = 100) +
+  scale_x_continuous(trans = "log")
+
+AMI_hist <- ggplot(data_clean) +
+  geom_histogram(aes(x = pct_AMI),
+                 bins = 30)
+  #scale_x_continuous(trans = "log")
+```
+
+## Displaying Results
+
+### Formatted Table
+
+```{r}
+cont_summary <- tibble(
+  Variable = c("Change of property value (%)",
+               "Average property value per census tract in 2018-19",
+               "Income as percent of AMI"),
+  `Sample mean` = c(prop_t_test$estimate,
+                    avg_1819_t_test$estimate,
+                    AMI_t_test$estimate),
+  `Population mean (95% confidence) - low` = 
+    c(prop_t_test$conf.int[1],
+      avg_1819_t_test$conf.int[1],
+      AMI_t_test$conf.int[1]),
+  `Population mean (95% confidence) - high` =
+    c(prop_t_test$conf.int[2],
+      avg_1819_t_test$conf.int[2],
+      AMI_t_test$conf.int[2]),
+  Median = c(prop_quartiles[3],
+             avg_1819_quartiles[3],
+             AMI_quartiles[3]),
+  `Interquartile range` = c(prop_quartiles[4] - prop_quartiles[2],
+                            avg_1819_quartiles[4] - avg_1819_quartiles[2],
+                            AMI_quartiles[4] - AMI_quartiles[2]),
+  `Standard deviation` = c(prop_st_dev,
+                           avg_1819_st_dev,
+                          AMI_st_dev))
+
+kable(cont_summary, digits = 0)
+```
+### Row of Histograms
+
+```{r}
+pretty_prop_hist = prop_hist +
+  theme_bw() +
+  scale_x_continuous(name = "Change in property value, as percent",
+                     trans = "log",
+                     breaks = c(0.1, 1, 10, 100, 1000, 10000),
+                     labels = c("0.1", "1", "10", "100", "1000", "10,000")) +
+  scale_y_continuous(name = "Census tracts in San Francisco") +
+  theme(axis.text.x = element_text(angle = 90)) 
+
+pretty_avg_1819_hist <- avg_1819_hist +
+  theme_bw() +
+  scale_x_continuous(name = "Average property value in 2018-19",
+                     trans = "log",
+                     breaks = c(0.1, 1, 10, 100, 1000, 10000),
+                     labels = c("0.1", "1", "10", "100", "1000", "10,000")) +
+  scale_y_continuous(name = "Census tracts in San Francisco") +
+  theme(axis.text.x = element_text(angle = 90))
+
+pretty_AMI_hist <- AMI_hist +
+  theme_bw() + 
+  scale_x_continuous(name = "Median income as percent of AMI",) +
+  scale_y_continuous(name = "Census tracts in San Francisco") +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+grid.arrange(pretty_prop_hist, pretty_avg_1819_hist, pretty_AMI_hist,
+             ncol = 3)
+```
+
+## Categorical Variables
+
+We have two categorical variables:
+
+* Whether the property value increased or decreased over the five-year period
+* whether affordable housing was present in the census tract
+
+```{r}
+pct_inc <- t.test(data_clean$newpropval == "Increase")
+pct_dec <-  t.test(data_clean$newpropval == "Decrease")
+
+AH_yes <- t.test(data_clean$AH == "Yes")
+AH_no <- t.test(data_clean$AH == "No")
+```
+
+```{r}
+cat_summary_propval <- tibble(`Property value change` = 
+                              c("Increase",
+                                "Decrease"),
+                            `Sample proportion` = 
+                              c(pct_inc$estimate * 100,
+                                pct_dec$estimate *100),
+                            `95-percent confidence - low` = 
+                              c(pct_inc$conf.int[1] * 100,
+                                pct_dec$conf.int[1] * 100),
+                            `95-percent confidence - high` = 
+                              c(pct_inc$conf.int[2] * 100,
+                                pct_dec$conf.int[2] * 100))
+
+kable(cat_summary_propval, digits = 0)
+```
+### Displaying Results
+```{r}
+ggplot(cat_summary_propval) +
+  geom_bar(aes(x = `Property value change`, 
+               y = `Sample proportion`),
+           stat = "identity") +
+  geom_errorbar(aes(x = `Property value change`, 
+               y = `Sample proportion`,
+               ymin = `95-percent confidence - low`,
+               ymax = `95-percent confidence - high`),
+           stat = "identity") +
+  scale_y_continuous(name = "% of census tracts",
+                     breaks = c(0, 20, 40, 60, 80),
+                     labels = c("0", "20%", "40%", "60%", "80%")) +
+  theme_bw()
+```
+
+```{r}
+cat_summary_AH <- tibble(`Affordable housing` = 
+                              c("Yes",
+                                "No"),
+                            `Sample proportion` = 
+                              c(AH_yes$estimate * 100,
+                                AH_no$estimate * 100),
+                            `95-percent confidence - low` = 
+                              c(AH_yes$conf.int[1] * 100,
+                                AH_no$conf.int[1] * 100),
+                            `95-percent confidence - high` = 
+                              c(AH_yes$conf.int[2] * 100,
+                                AH_no$conf.int[2] * 100))
+
+kable(cat_summary_AH, digits = 0)
+```
+```{r}
+ggplot(cat_summary_AH) +
+  geom_bar(aes(x = `Affordable housing`, 
+               y = `Sample proportion`),
+           stat = "identity") +
+  geom_errorbar(aes(x = `Affordable housing`, 
+               y = `Sample proportion`,
+               ymin = `95-percent confidence - low`,
+               ymax = `95-percent confidence - high`),
+           stat = "identity") +
+  scale_y_continuous(name = "% of census tracts",
+                     breaks = c(0, 20, 40, 60, 80),
+                     labels = c("0", "20%", "40%", "60%", "80%")) +
+  theme_bw()
+```
+
+# Bivariate Regression Analysis
+
+The dependent variable is the percent change in property values between 2013-14 and 2018-18. The independent variables are average property value per census tract in 2018-19, median income as percent of AMI, presence of affordable housing, and whether the property value increased or decreased from 2013-14 to 2018-19. 
+
+## Average Property Values in 2018-19
+```{r}
+data <- data_clean
+
+cor.test(~ pct_change + avg_1819, data = data)
+```
+
+The 95-percent confidence interval for the correlation between percent change in property value and average property value in 2018-19 includes 0, and has a very high p-value, so we cannot confidently say there is any relationship between these two variables. 
+
+
+## Median Income as Percent of AMI
+```{r}
+cor.test(~ pct_change + pct_AMI, data = data)
+```
+The 95-percent confidence interval for the correlation between percent change in property value and income as percent of AMI includes 0, and has an even higher p-value, so we cannot confidently say there is any relationship between these two variables.
+
+## Housing Tenure 
+```{r}
+cor.test(~ pct_change + pct_owner, data = data) 
+```
+The 95-percent confidence interval for the correlation between percent change of property value and percent of tract with owner-occupied housing includes 0, and the p-value is much higher than 0.05, so we cannot confidently say anything about this relationship either.
+ 
+## Presence of Affordable Housing 
+```{r}
+t.test(pct_change ~ AH, data)
+```
+The p-value is less than 0.05, which means the relationship between percent change of property value and the presence of affordable housing is significant. It seems that a higher percent change in property value is associated with the presence of affordable housing. 
+ 
+```{r}
+full_model <- lm(pct_change ~ avg_1819 + pct_AMI + AH + pct_owner, data)
+
+summary(full_model)
+
+```
+
+
+# References
+
+* Center for Housing Policy. n.d. "'Don't Put it Here!' Does Affordable Housing Cause Nearby Property Values to Decline?" Insights from Housing Policy Research. https://furmancenter.org/files/media/Dont_Put_It_Here.pdf.
+
+* Nguyen, Mai Thi. 2005. "Does Affordable Housing Detrimentally Affect Property Values? A Review of the Literature." Journal of Planning Literature 20, no. 1: 15-26. https://10.1177/0885412205277069
+
+* PolicyMap. 2019. Location of publicly funded housing within San Francisco [Map].  https://harvard-policymap-com.ezp-prod1.hul.harvard.edu/maps?p=100385&o=101450,101500,96400,162200,150100,165200,306250&cx=-122.38390910801226&cy=37.80951024596563&cz=8
+
+* San Francisco City & County, Office of Assessor-Recorder. n.d. Secured Property Tax Data. http://sfassessor.org/news-information/property-data-0
+
