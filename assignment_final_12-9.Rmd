@@ -47,7 +47,7 @@ The sample population for this study is census tracts in San Francisco, Californ
 * White, non-Hispanic Population (US Census Bureau 2019)
 * Owner-Occupied Housing (US Census Bureau 2019)
 
-This data set includes 194 observations which include the Census tracts in San Francisco.
+This data set includes 194 observations which include the census tracts in San Francisco.
 
 ```{r echo = FALSE, message=FALSE, results='hide', warning=FALSE}
 sf_1314 <- read_csv("sf_tax_1314.csv") 
@@ -451,23 +451,23 @@ interact_plot(interaction_model2, pred = pct_AMI, modx = AH,
               interval = TRUE) +
   scale_x_continuous(breaks = breaks <- c(-20, -10, 0, 10, 20, 30, 40, 50, 60, 70, 80),
                      labels = round(breaks * 2 + mean(data$pct_AMI, na.rm = TRUE)),
-                     name = "Percent AMI") +
-  scale_y_continuous(name = "Percent change in Cost of House")
+                     name = "Income as Percent of AMI") +
+  scale_y_continuous(name = "Percent change in Property Value")
 ```
 
-Controlling for all other variables, we find that the presence of affordable housing and the interaction between the presence of affordable housing and the percent area median income are both statistically significant predictors of property value change. The coefficient for census tracts with affordable housing is significant, positive and of a large magnitude. This indicates greater percent change in property value for tracts that had affordable housing. There is no significant relationship between percent change of property values and property values in 2013-14, area median income, white, non-Hispanic population, and housing tenure.  
+Controlling for all other variables, we find that the presence of affordable housing and the interaction between the presence of affordable housing and the percent area median income are both statistically significant predictors of property value change. The coefficient for census tracts with affordable housing is significant, positive, and of a large magnitude. This indicates greater percent change in property value for tracts that had affordable housing. There is no significant relationship between percent change of property values and property values in 2013-14, area median income, white, non-Hispanic population, and housing tenure.  
 
-Our analysis shows that in census tracts with no affordable housing, we saw little to no change in property value in relationship to area median income. However, in census tracts with affordable housing, there was a significant negative relationship between percent change in property value and area median income. We noticed that the census tracts that had higher AMI saw smaller increases in percent change of property values than tracts with lower AMI.
+Our analysis shows that in census tracts with no affordable housing, we saw little to no change in property value in relationship to area median income. However, in census tracts with affordable housing, there was a significant, negative relationship between percent change in property value and area median income. We noticed that the census tracts that had higher AMI saw smaller increases in percent change of property values than tracts with lower AMI.
 
 This model is our best fitting model and explains about 13% of the variation in tract-level property value change in San Francisco from 2013-14 to 2018-19.
 
 # Discussions
 
-Based on our analysis, we were surprised to find that affordable housing has a significant, positive relationship on percent change in property value. Referring back to Nguyen's research, we had expected a negative relationship or no relationship between affordable housing and property value. Her research also suggests a limitation of our analysis; we did not look at the quality of the housing that existed in San Francisco at the time of our research, which played a big part in Nguyen's research. 
+We were surprised to find that affordable housing has a significant, positive relationship with percent change in property value. Referring back to Nguyen's research, we had expected a negative relationship or no relationship between affordable housing and property value. Her research also suggests a limitation of our analysis; we did not look at the quality of the housing that existed in San Francisco at the time of our research, which played a big part in Nguyen's research. 
 
 Another characteristic of our research is that our study area is based in San Francisco, which is one of the most expensive places to live in the United States and has a very active and competitive real estate market. This makes it difficult to isolate other factors that could play a significant role in property value changes. 
 
-Another limitation is that we chose LIHTC as the one proxy for affordable housing in this analysis. We know that there are other types of affordable housing financing mechanisms, and by including other buildings that were funded by other financing mechanisms, we might have been able to produce a more robust analysis. 
+Another limitation is that we chose LIHTC as the one proxy for affordable housing in this analysis. We know that there are other types of affordable housing financing mechanisms, and by including other buildings that were funded by these other mechanisms, we might have been able to produce a more robust analysis. 
 
 The analysis may have been richer if we were also able to quantify the number of affordable housing units per tract and assess the quality of each affordable housing unit that was produced. 
 
@@ -486,5 +486,3 @@ References
 * San Francisco City & County, Office of Assessor-Recorder. n.d. Secured Property Tax Data. http://sfassessor.org/news-information/property-data-0
 
 * United States Census Bureau. American Community Survey, 5-year estimates. 2019
-
-
