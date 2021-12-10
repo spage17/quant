@@ -461,7 +461,7 @@ Our analysis shows that in census tracts with no affordable housing, we saw litt
 
 This model is our best fitting model and explains about 13% of the variation in tract-level property value change in San Francisco from 2013-14 to 2018-19.
 
-# Discussions
+# Discussion
 
 We were surprised to find that affordable housing has a significant, positive relationship with percent change in property value. Referring back to Nguyen's research, we had expected a negative relationship or no relationship between affordable housing and property value. Her research also suggests a limitation of our analysis; we did not look at the quality of the housing that existed in San Francisco at the time of our research, which played a big part in Nguyen's research. 
 
